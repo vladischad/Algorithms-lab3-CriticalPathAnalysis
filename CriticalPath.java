@@ -17,32 +17,24 @@ import java.util.*;
 public class CriticalPath {
 
     /**
-     * Represents a directed edge from one node to another with a weight.
+     * Represents a directed edge to another node.
      */
     static class Edge {
-        int to, weight;
-
-        /**
-         * Constructs an Edge with a destination and weight.
-         * @param to The destination node index.
-         * @param weight The weight of the edge.
+        int to;
+                /**
+         * Constructs an edge pointing to the specified destination node.
+         * @param to the index of the destination node
          */
-        Edge(int to, int weight) {
+        Edge(int to) {
             this.to = to;
-            this.weight = weight;
         }
     }
 
-    static List<List<Edge>> adjList = new ArrayList<>(); // Adjacency list representation of the graph
-    static int[] EC, LC; // Arrays for earliest and latest completion times
-    static int n; // Number of nodes
-    static String[] nodeNames; // Array of node labels from the file
+    static List<List<Edge>> adjList = new ArrayList<>();
+    static int[] EC, LC, procTime;
+    static int n;
+    static String[] nodeNames;
 
-    /**
-     * Main method that drives the critical path analysis program.
-     * @param args Command line arguments (expects 1: filename).
-     * @throws IOException If file reading fails.
-     */
     public static void main(String[] args) throws IOException {
         if (args.length != 1) {
             System.out.println("Usage: java CriticalPath <filename>");
@@ -54,19 +46,20 @@ public class CriticalPath {
         n = nodeNames.length;
 
         int[][] matrix = new int[n][n];
+        procTime = new int[n];
         String line;
         for (int i = 0; i < n; i++) {
             line = br.readLine();
             String[] parts = line.trim().split("\\s+");
             for (int j = 0; j < n; j++) {
                 matrix[i][j] = Integer.parseInt(parts[j + 1]);
+                if (matrix[i][j] != -1) procTime[j] = matrix[i][j];
             }
         }
 
         buildGraph(matrix);
         EC = new int[n];
         LC = new int[n];
-        Arrays.fill(EC, 0);
         Arrays.fill(LC, Integer.MAX_VALUE);
 
         List<Integer> topoOrder = topologicalSort();
@@ -77,8 +70,8 @@ public class CriticalPath {
     }
 
     /**
-     * Builds the adjacency list from the given adjacency matrix.
-     * @param matrix The adjacency matrix from the input file.
+     * Builds the adjacency list representation of the graph from an adjacency matrix.
+     * @param matrix the adjacency matrix representing edges between nodes
      */
     static void buildGraph(int[][] matrix) {
         for (int i = 0; i < n; i++) {
@@ -87,15 +80,15 @@ public class CriticalPath {
         for (int u = 0; u < n; u++) {
             for (int v = 0; v < n; v++) {
                 if (matrix[u][v] != -1) {
-                    adjList.get(u).add(new Edge(v, matrix[u][v]));
+                    adjList.get(u).add(new Edge(v));
                 }
             }
         }
     }
 
     /**
-     * Performs topological sorting of the graph.
-     * @return A list of node indices in topological order.
+     * Performs a topological sort on the directed acyclic graph (DAG).
+     * @return a list of node indices in topological order
      */
     static List<Integer> topologicalSort() {
         int[] inDegree = new int[n];
@@ -121,33 +114,33 @@ public class CriticalPath {
     }
 
     /**
-     * Computes earliest completion times (EC) for all nodes.
-     * @param order Topologically sorted list of node indices.
+     * Computes the earliest completion times (EC) for all nodes based on topological order.
+     * @param order list of nodes in topological order
      */
     static void computeEC(List<Integer> order) {
         for (int u : order) {
             for (Edge e : adjList.get(u)) {
-                EC[e.to] = Math.max(EC[e.to], EC[u] + e.weight);
+                EC[e.to] = Math.max(EC[e.to], EC[u] + procTime[e.to]);
             }
         }
     }
 
     /**
-     * Computes latest completion times (LC) for all nodes.
-     * @param order Topologically sorted list of node indices.
+     * Computes the latest completion times (LC) for all nodes based on reverse topological order.
+     * @param order list of nodes in topological order
      */
     static void computeLC(List<Integer> order) {
         LC[order.get(order.size() - 1)] = EC[order.get(order.size() - 1)];
         for (int i = order.size() - 1; i >= 0; i--) {
             int u = order.get(i);
             for (Edge e : adjList.get(u)) {
-                LC[u] = Math.min(LC[u], LC[e.to] - e.weight);
+                LC[u] = Math.min(LC[u], LC[e.to] - procTime[e.to]);
             }
         }
     }
 
     /**
-     * Prints EC, LC, and SlackTime for each activity.
+     * Prints the earliest and latest completion times along with slack for each node.
      */
     static void printResults() {
         System.out.println("Activity Node\tEC\tLC\tSlackTime");
@@ -157,4 +150,4 @@ public class CriticalPath {
             System.out.printf("%s\t\t%d\t%d\t%d\n", nodeNames[u], EC[u], LC[u], slack);
         }
     }
-} 
+}
